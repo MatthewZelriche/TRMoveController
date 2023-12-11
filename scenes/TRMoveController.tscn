@@ -1,0 +1,19 @@
+[gd_scene load_steps=4 format=3 uid="uid://7pq2u5qg3l2o"]
+
+[ext_resource type="Script" path="res://addons/TRMoveController/src/TRMoveController.cs" id="1_hu2b7"]
+[ext_resource type="Script" path="res://addons/TRMoveController/src/TRCamera.cs" id="2_ykx7q"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5pdw0"]
+
+[node name="TRMoveController" type="RigidBody3D" node_paths=PackedStringArray("playerCamera")]
+lock_rotation = true
+custom_integrator = true
+continuous_cd = true
+script = ExtResource("1_hu2b7")
+playerCamera = NodePath("PlayerCamera")
+
+[node name="PlayerCamera" type="Camera3D" parent="."]
+script = ExtResource("2_ykx7q")
+
+[node name="AABB" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_5pdw0")
