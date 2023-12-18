@@ -5,9 +5,11 @@ public partial class TRCamera : Camera3D
     [Export]
     // Corresponds to the cvar 'm_yaw' in goldSrc
     private float yawSpeed = 0.022f;
+
     [Export]
     // Corresponds to the cvar 'm_pitch' in goldSrc
     private float pitchSpeed = 0.022f;
+
     [Export]
     // Corresponds to the cvar 'sensitivity' in goldSrc
     private float sensitivity = 2.0f;
@@ -17,7 +19,7 @@ public partial class TRCamera : Camera3D
 
     public override void _Ready()
     {
-        // Camera may start rotated - so we need to get the "starting" pitch and yaw 
+        // Camera may start rotated - so we need to get the "starting" pitch and yaw
         pitch = Mathf.RadToDeg(Rotation.X);
         yaw = Mathf.RadToDeg(Rotation.Y);
     }
@@ -25,7 +27,7 @@ public partial class TRCamera : Camera3D
     public Vector3 UnitForwardHorzVector()
     {
         // Project the Forward Vector onto the XZ horizontal plane, so that we
-        // can get the player's horizontal movement direction irrespective of their 
+        // can get the player's horizontal movement direction irrespective of their
         // camera pitch
         return new Plane(new Vector3(0, 1, 0)).Project(UnitForwardVector()).Normalized();
     }
