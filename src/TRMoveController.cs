@@ -19,6 +19,8 @@ public partial class TRMoveController : RigidBody3D
         set { gravity = value * scaleFactor; }
     }
 
+    private Vector3 velocity;
+
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
     {
@@ -28,6 +30,27 @@ public partial class TRMoveController : RigidBody3D
         );
     }
 
-    // Called every frame. 'delta' is the elapsed time since the previous frame.
-    public override void _Process(double delta) { }
+    public override void _PhysicsProcess(double _step)
+    {
+        float step = (float)_step;
+        ApplyHalfGravity(step);
+        MoveAndSlide(step);
+        ApplyHalfGravity(step);
+    }
+
+    private void MoveAndSlide(float timeStep)
+    {
+        // TODO: Proper movement update
+        MoveAndCollide(velocity * timeStep);
+    }
+
+    // Gravity is normally applied via "leapfrog integration" instead of a simpler
+    // euler integration technique. I'm not 100% sure this is actually necessary
+    // due to the fact that we use a fixed physics timestep, but there isn't much of a
+    // reason not to do it to be safe.
+    // https://www.jwchong.com/hl/movement.html#gravity
+    private void ApplyHalfGravity(float timeStep)
+    {
+        velocity.Y -= 0.5f * Gravity * timeStep;
+    }
 }
