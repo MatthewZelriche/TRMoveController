@@ -5,12 +5,13 @@
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_5pdw0"]
 
-[node name="TRMoveController" type="RigidBody3D" node_paths=PackedStringArray("playerCamera")]
+[node name="TRMoveController" type="RigidBody3D" node_paths=PackedStringArray("playerCamera", "collider")]
 lock_rotation = true
 custom_integrator = true
 continuous_cd = true
 script = ExtResource("1_hu2b7")
 playerCamera = NodePath("PlayerCamera")
+collider = NodePath("AABB")
 
 [node name="PlayerCamera" type="Camera3D" parent="."]
 script = ExtResource("2_ykx7q")

@@ -7,10 +7,19 @@ public partial class TRMoveController : RigidBody3D
 {
     [Export]
     private Camera3D playerCamera = null;
+
+    [Export]
+    private CollisionShape3D collider = null;
+
+    [Export(PropertyHint.Range, "1,128,1,or_greater")]
+    // Values exposed to the editor are in Trenchbroom/Hammer units for ease of
+    // tweaking. As such, a unit conversion needs to occur in order to map Trenchbroom
+    // units to Godot units. If you are using Qodot, set this to the same scale factor
+    // you use in Qodot.
     private float scaleFactor = 16.0f;
 
     [ExportCategory("Gravity & Falling")]
-    [Export]
+    [Export(PropertyHint.Range, "0,1200,20,or_greater")]
     // Corresponds to the cvar 'sv_gravity' in goldsrc
     private float gravity = 800.0f;
 
@@ -29,6 +38,10 @@ public partial class TRMoveController : RigidBody3D
         Debug.Assert(
             playerCamera != null,
             "You forgot to assign a Camera3D to the TRMoveController!"
+        );
+        Debug.Assert(
+            collider != null,
+            "You forgot to assign a CollisionShape3D to the TRMoveController!"
         );
 
         movementStates.Init<Air>(this);
