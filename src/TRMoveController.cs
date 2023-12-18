@@ -18,10 +18,44 @@ public partial class TRMoveController : RigidBody3D
     // you use in Qodot.
     private float scaleFactor = 16.0f;
 
+    [ExportCategory("Basic Movement")]
+    [Export(PropertyHint.Range, "0,600,5,or_greater")]
+    // Corresponds to the cvar 'cl_forwardspeed' in goldsrc
+    // Note that this value (as well as sideSpeed and upSpeed) can be misleading,
+    // as they are "client-side" maximum speeds. Regardless of what you set these speeds
+    // to, they cannot cause you to exceed the maxSpeed (sv_maxspeed) value
+    private int forwardSpeed = 400;
+
+    [Export(PropertyHint.Range, "0,600,5,or_greater")]
+    // Corresponds to the cvar 'cl_sideSpeed' in goldsrc
+    private int sideSpeed = 400;
+
+    [Export(PropertyHint.Range, "0,450,5,or_greater")]
+    // Corresponds to the cvar 'sv_maxspeed' in goldsrc
+    private float maxSpeed = 320.0f;
+
     [ExportCategory("Gravity & Falling")]
     [Export(PropertyHint.Range, "0,1200,20,or_greater")]
     // Corresponds to the cvar 'sv_gravity' in goldsrc
     private float gravity = 800.0f;
+
+    public int ForwardSpeed
+    {
+        get { return forwardSpeed / (int)scaleFactor; }
+        set { forwardSpeed = value * (int)scaleFactor; }
+    }
+
+    public int SideSpeed
+    {
+        get { return sideSpeed / (int)scaleFactor; }
+        set { sideSpeed = value * (int)scaleFactor; }
+    }
+
+    public float MaxSpeed
+    {
+        get { return maxSpeed / scaleFactor; }
+        set { maxSpeed = value * scaleFactor; }
+    }
 
     public float Gravity
     {
@@ -53,6 +87,53 @@ public partial class TRMoveController : RigidBody3D
         float step = (float)_step;
         movementStates.UpdateStates(step);
         movementStates.ProcessStateTransitions();
+    }
+
+    private Vector3 ComputeFSU()
+    {
+        Vector3 FSU = new Vector3();
+        if (Input.IsActionPressed("TRForward"))
+        {
+            FSU.Z += ForwardSpeed;
+        }
+        if (Input.IsActionPressed("TRBack"))
+        {
+            FSU.Z -= ForwardSpeed;
+        }
+        if (Input.IsActionPressed("TRLeft"))
+        {
+            FSU.X -= SideSpeed;
+        }
+        if (Input.IsActionPressed("TRRight"))
+        {
+            FSU.X += SideSpeed;
+        }
+
+        // TODO: Upmove
+
+        // Truncation to integer via Export Hints
+        // Must also clamp to -2047, 2047
+        Mathf.Clamp(FSU.X, -2047 / scaleFactor, 2047 / scaleFactor);
+        Mathf.Clamp(FSU.Y, -2047 / scaleFactor, 2047 / scaleFactor);
+        Mathf.Clamp(FSU.Z, -2047 / scaleFactor, 2047 / scaleFactor);
+
+        // If all are zero, return early
+        if (FSU == Vector3.Zero)
+        {
+            return FSU;
+        }
+
+        // Now perform what was traditionally a "server-side" computation
+        // This clamps the final allowable input speed to maxSpeed and performs some
+        // normalization of the input vector to avoid faster movement while moving
+        // diagonally
+        float FSULength = FSU.Length();
+        Vector3 FSUFinal = new Vector3();
+        FSUFinal.X = (FSU.X * MaxSpeed) / FSULength;
+        FSUFinal.Y = (FSU.Y * MaxSpeed) / FSULength;
+        FSUFinal.Z = (FSU.Z * MaxSpeed) / FSULength;
+
+        return FSUFinal;
     }
 
     public bool IsOnFloor(bool snap = true)
