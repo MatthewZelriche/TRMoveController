@@ -14,13 +14,32 @@ public partial class TRMoveController : RigidBody3D
             Owner.ApplyHalfGravity(step);
         }
 
+        public override void OnExit()
+        {
+            // Don't forget to zero out our vertical velocity once we are no longer
+            // in the air
+            Owner.velocity.Y = 0;
+        }
+
         public override Transition GetTransition()
         {
-            return Transition.None();
+            return Owner.IsOnFloor() ? Transition.Sibling<Ground>() : Transition.None();
         }
     }
 
-    class Ground : StateWithOwner<TRMoveController> { }
+    class Ground : StateWithOwner<TRMoveController>
+    {
+        public override void Update(float step)
+        {
+            // TODO
+        }
+
+        public override Transition GetTransition()
+        {
+            // TODO
+            return Transition.None();
+        }
+    }
 
     class Swim : StateWithOwner<TRMoveController> { }
 }

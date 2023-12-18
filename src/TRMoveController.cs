@@ -31,6 +31,7 @@ public partial class TRMoveController : RigidBody3D
 
     private StateMachine movementStates = new StateMachine();
     private Vector3 velocity;
+    private SeparationRayShape3D floorChecker = new SeparationRayShape3D();
 
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
@@ -54,10 +55,31 @@ public partial class TRMoveController : RigidBody3D
         movementStates.ProcessStateTransitions();
     }
 
-    private void MoveAndSlide(float timeStep)
+    public bool IsOnFloor(bool snap = true)
     {
-        // TODO: Proper movement update
-        MoveAndCollide(velocity * timeStep);
+        // TODO: Max floor angle
+
+        Vector3 downMotion = new Vector3(0.0f, -1.0f / scaleFactor, 0.0f);
+        if (TestMove(GlobalTransform, downMotion) != null)
+        {
+            if (snap)
+            {
+                MoveAndCollide(downMotion);
+            }
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    private KinematicCollision3D TestMove(Transform3D from, Vector3 motion)
+    {
+        KinematicCollision3D collision = new KinematicCollision3D();
+        bool res = TestMove(from, motion, collision, recoveryAsCollision: true, maxCollisions: 6);
+
+        return res ? collision : null;
     }
 
     // Gravity is normally applied via "leapfrog integration" instead of a simpler
@@ -68,5 +90,11 @@ public partial class TRMoveController : RigidBody3D
     private void ApplyHalfGravity(float timeStep)
     {
         velocity.Y -= 0.5f * Gravity * timeStep;
+    }
+
+    private void MoveAndSlide(float timeStep)
+    {
+        // TODO: Proper movement update
+        MoveAndCollide(velocity * timeStep);
     }
 }
