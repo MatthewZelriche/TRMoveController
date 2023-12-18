@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Godot;
+using Hsm;
 
 [GlobalClass]
 public partial class TRMoveController : RigidBody3D
@@ -19,6 +20,7 @@ public partial class TRMoveController : RigidBody3D
         set { gravity = value * scaleFactor; }
     }
 
+    private StateMachine movementStates = new StateMachine();
     private Vector3 velocity;
 
     // Called when the node enters the scene tree for the first time.
@@ -28,14 +30,15 @@ public partial class TRMoveController : RigidBody3D
             playerCamera != null,
             "You forgot to assign a Camera3D to the TRMoveController!"
         );
+
+        movementStates.Init<Air>(this);
     }
 
     public override void _PhysicsProcess(double _step)
     {
         float step = (float)_step;
-        ApplyHalfGravity(step);
-        MoveAndSlide(step);
-        ApplyHalfGravity(step);
+        movementStates.UpdateStates(step);
+        movementStates.ProcessStateTransitions();
     }
 
     private void MoveAndSlide(float timeStep)
