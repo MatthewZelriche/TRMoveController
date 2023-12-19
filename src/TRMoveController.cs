@@ -6,7 +6,7 @@ using Hsm;
 public partial class TRMoveController : RigidBody3D
 {
     [Export]
-    private Camera3D playerCamera = null;
+    private TRCamera playerCamera = null;
 
     [Export]
     private CollisionShape3D collider = null;
@@ -43,6 +43,26 @@ public partial class TRMoveController : RigidBody3D
     [Export(PropertyHint.Range, "0,450,5,or_greater")]
     // Corresponds to the cvar 'sv_maxspeed' in goldsrc
     private float maxSpeed = 320.0f;
+
+    [Export(PropertyHint.Range, "0.1,6.0,0.1")]
+    // Corresponds to the cvar 'sv_friction' in goldsrc
+    private float friction = 4.0f;
+
+    [Export(PropertyHint.Range, "0.1,6.0,0.1")]
+    // Corresponds to the cvar 'edgefriction' in goldsrc
+    private float edgeFriction = 2.0f;
+
+    [Export(PropertyHint.Range, "10.0,300.0,1")]
+    // Corresponds to the cvar 'sv_stopspeed' in goldsrc
+    private float stopSpeed = 100.0f;
+
+    [Export(PropertyHint.Range, "0.0, 100.0, 2.0")]
+    // Corresponds to the cvar 'sv_accelerate' in goldsrc
+    private float accelerate = 10.0f;
+
+    [Export(PropertyHint.Range, "0.0, 100.0, 2.0")]
+    // Corresponds to the cvar 'sv_airaccelerate' in goldsrc
+    private float airAccelerate = 10.0f;
 
     [ExportCategory("Gravity & Falling")]
     [Export(PropertyHint.Range, "0,1200,20,or_greater")]
@@ -85,6 +105,12 @@ public partial class TRMoveController : RigidBody3D
         set { maxSpeed = value * scaleFactor; }
     }
 
+    public float StopSpeed
+    {
+        get { return stopSpeed / scaleFactor; }
+        set { stopSpeed = value * scaleFactor; }
+    }
+
     public float Gravity
     {
         get { return gravity / scaleFactor; }
@@ -93,7 +119,7 @@ public partial class TRMoveController : RigidBody3D
 
     private StateMachine movementStates = new StateMachine();
     private Vector3 velocity;
-    private SeparationRayShape3D floorChecker = new SeparationRayShape3D();
+    private float entityFriction = 1.0f;
 
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
@@ -123,6 +149,52 @@ public partial class TRMoveController : RigidBody3D
         float step = (float)_step;
         movementStates.UpdateStates(step);
         movementStates.ProcessStateTransitions();
+    }
+
+    private Vector3 ComputeHorzVelocity(float step)
+    {
+        bool airborne = movementStates.IsInState<Air>();
+
+        Vector3 FSU = ComputeFSU();
+        Vector3 accelVector = (
+            (
+                FSU.X * playerCamera.UnitRightVector()
+                + (FSU.Z * playerCamera.UnitForwardHorzVector())
+            )
+        );
+
+        Vector3 velAfterGroundFriction = airborne
+            ? velocity
+            : ComputeGroundFriction(velocity, step);
+
+        float clampedSpeed = Mathf.Min(MaxSpeed, accelVector.Length());
+        float accelValue = airborne ? airAccelerate : accelerate;
+        float gamma1 = entityFriction * step * clampedSpeed * accelValue;
+        float airSpeedCap = airborne ? Mathf.Min(30 / scaleFactor, clampedSpeed) : clampedSpeed;
+        float gamma2 = airSpeedCap - velAfterGroundFriction.Dot(accelVector.Normalized());
+        float muCoefficient = gamma2 > 0 ? Mathf.Min(gamma1, gamma2) : 0;
+
+        return velAfterGroundFriction + (muCoefficient * accelVector.Normalized());
+    }
+
+    private Vector3 ComputeGroundFriction(Vector3 horzVel, float step)
+    {
+        // TODO: Check EdgeFriction
+        float frictionCoefficient = friction * entityFriction * 1.0f;
+        float smallSpeed = Mathf.Max(0.1f / scaleFactor, step * StopSpeed * frictionCoefficient);
+
+        if (horzVel.Length() >= StopSpeed)
+        {
+            return (1 - (frictionCoefficient * step)) * horzVel;
+        }
+        else if (horzVel.Length() >= smallSpeed)
+        {
+            return horzVel - (step * StopSpeed * frictionCoefficient * horzVel.Normalized());
+        }
+        else
+        {
+            return Vector3.Zero;
+        }
     }
 
     private Vector3 ComputeFSU()

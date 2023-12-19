@@ -9,8 +9,12 @@ public partial class TRMoveController : RigidBody3D
         {
             // Leapfrog integration of gravity force.
             Owner.ApplyHalfGravity(step);
-            // TODO: Compute horizontal velocity
-            Owner.MoveAndCollide(Owner.velocity * step);
+            // Treat the velocity as strictly horizontal
+            float savedVertVelocity = Owner.velocity.Y;
+            Owner.velocity.Y = 0;
+            Owner.velocity = Owner.ComputeHorzVelocity(step);
+            Owner.velocity.Y = savedVertVelocity;
+            Owner.MoveAndSlide(step);
             Owner.ApplyHalfGravity(step);
         }
 
@@ -31,7 +35,8 @@ public partial class TRMoveController : RigidBody3D
     {
         public override void Update(float step)
         {
-            // TODO
+            Owner.velocity = Owner.ComputeHorzVelocity(step);
+            Owner.MoveAndSlide(step);
         }
 
         public override Transition GetTransition()
