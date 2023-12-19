@@ -28,6 +28,11 @@ public partial class TRMoveController : RigidBody3D
     [Export]
     private float eyeHeight = 64.0f;
 
+    [ExportCategory("Collision")]
+    [Export]
+    // Corresponds to the cvar 'sv_bounce' in goldsrc
+    private float bounce = 1.0f;
+
     [ExportCategory("Basic Movement")]
     [Export(PropertyHint.Range, "0,600,5,or_greater")]
     // Corresponds to the cvar 'cl_forwardspeed' in goldsrc
@@ -128,6 +133,7 @@ public partial class TRMoveController : RigidBody3D
     private StateMachine movementStates = new StateMachine();
     private Vector3 velocity;
     private float entityFriction = 1.0f;
+    float maxFloorAngleValue = 0.7f;
 
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
@@ -271,7 +277,7 @@ public partial class TRMoveController : RigidBody3D
             // This is Goldsrc's method for determining whether a slope is walkable or not
             // TODO: IMPROVEMENT: We can base this on an actual angle and make it
             // configurable
-            if (collision.GetNormal().Y >= 0.7f)
+            if (collision.GetNormal().Y >= maxFloorAngleValue)
             {
                 // Snap to the ground
                 MoveAndCollide(downMotion);
@@ -308,7 +314,61 @@ public partial class TRMoveController : RigidBody3D
 
     private void MoveAndSlide(float timeStep)
     {
-        // TODO: Proper movement update
-        MoveAndCollide(velocity * timeStep);
+        Vector3 deltaRemaining = velocity * timeStep;
+
+        for (int i = 0; i < 4; i++)
+        {
+            KinematicCollision3D collision = MoveAndCollide(deltaRemaining);
+
+            // We didn't collide with anythin, so we are done
+            if (collision == null)
+            {
+                break;
+            }
+
+            // Collision was detected, so we haven't moved the entire distance yet...
+            // Get the amount of movement still left to perform
+            deltaRemaining = collision.GetRemainder();
+
+            // Process Collision
+            float bounceCoefficient = ComputeBounceCoefficient(collision.GetNormal().Y);
+            GD.Print(bounceCoefficient);
+            deltaRemaining = ComputeCollisionResponse(
+                deltaRemaining,
+                collision.GetNormal(),
+                bounceCoefficient
+            );
+            velocity = ComputeCollisionResponse(velocity, collision.GetNormal(), bounceCoefficient);
+
+            // TODO: IMPROVEMENT: The player can "collide up" a steep slope when on the ground.
+            // It would be nice to remove this....somehow, if it doesn't conflict with any
+            // other movement functionality
+        }
+    }
+
+    private Vector3 ComputeCollisionResponse(
+        Vector3 vel,
+        Vector3 collisionNormal,
+        float bounceCoefficient
+    )
+    {
+        vel -= bounceCoefficient * vel.Dot(collisionNormal) * collisionNormal;
+
+        return vel;
+    }
+
+    private float ComputeBounceCoefficient(float normalY)
+    {
+        if (
+            (movementStates.IsInState<Air>() || !Mathf.IsEqualApprox(entityFriction, 1.0f))
+            && normalY <= maxFloorAngleValue
+        )
+        {
+            return 1 + (bounce * (1 - entityFriction));
+        }
+        else
+        {
+            return 1.0f;
+        }
     }
 }
