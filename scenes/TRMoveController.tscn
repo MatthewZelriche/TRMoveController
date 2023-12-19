@@ -12,6 +12,7 @@ continuous_cd = true
 script = ExtResource("1_hu2b7")
 playerCamera = NodePath("PlayerCamera")
 collider = NodePath("AABB")
+scaleFactor = 32.0
 
 [node name="PlayerCamera" type="Camera3D" parent="."]
 script = ExtResource("2_ykx7q")

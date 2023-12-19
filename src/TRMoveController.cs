@@ -11,12 +11,22 @@ public partial class TRMoveController : RigidBody3D
     [Export]
     private CollisionShape3D collider = null;
 
+    [ExportCategory("Dimensions")]
     [Export(PropertyHint.Range, "1,128,1,or_greater")]
     // Values exposed to the editor are in Trenchbroom/Hammer units for ease of
     // tweaking. As such, a unit conversion needs to occur in order to map Trenchbroom
     // units to Godot units. If you are using Qodot, set this to the same scale factor
     // you use in Qodot.
     private float scaleFactor = 16.0f;
+
+    [Export(PropertyHint.Range, "16,96,1")]
+    private float standingHeight = 72.0f;
+
+    [Export(PropertyHint.Range, "16,48,1")]
+    private float width = 32.0f;
+
+    [Export]
+    private float eyeHeight = 64.0f;
 
     [ExportCategory("Basic Movement")]
     [Export(PropertyHint.Range, "0,600,5,or_greater")]
@@ -38,6 +48,24 @@ public partial class TRMoveController : RigidBody3D
     [Export(PropertyHint.Range, "0,1200,20,or_greater")]
     // Corresponds to the cvar 'sv_gravity' in goldsrc
     private float gravity = 800.0f;
+
+    public float StandingHeight
+    {
+        get { return standingHeight / scaleFactor; }
+        set { standingHeight = value * scaleFactor; }
+    }
+
+    public float Width
+    {
+        get { return width / scaleFactor; }
+        set { width = value * scaleFactor; }
+    }
+
+    public float EyeHeight
+    {
+        get { return eyeHeight / scaleFactor; }
+        set { eyeHeight = value * scaleFactor; }
+    }
 
     public int ForwardSpeed
     {
@@ -77,6 +105,14 @@ public partial class TRMoveController : RigidBody3D
         Debug.Assert(
             collider != null,
             "You forgot to assign a CollisionShape3D to the TRMoveController!"
+        );
+
+        // Set dimensions
+        ((BoxShape3D)collider.Shape).Size = new Vector3(Width, StandingHeight, Width);
+        playerCamera.Position = new Vector3(
+            playerCamera.Position.X,
+            EyeHeight / 2,
+            playerCamera.Position.Y
         );
 
         movementStates.Init<Air>(this);
