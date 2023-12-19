@@ -244,11 +244,14 @@ public partial class TRMoveController : RigidBody3D
         return FSUFinal;
     }
 
-    public bool IsOnFloor(bool snap = true)
+    // According to https://www.jwchong.com/hl/duckjump.html, there is a
+    // 2 unit margin for determining if the player is on the ground, and snapping is
+    // not performed
+    public bool IsOnFloor(bool snap = false)
     {
         // TODO: Max floor angle
 
-        Vector3 downMotion = new Vector3(0.0f, -1.0f / scaleFactor, 0.0f);
+        Vector3 downMotion = new Vector3(0.0f, -2.0f / scaleFactor, 0.0f);
         if (TestMove(GlobalTransform, downMotion) != null)
         {
             if (snap)
