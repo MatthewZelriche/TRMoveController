@@ -252,21 +252,35 @@ public partial class TRMoveController : RigidBody3D
         return FSUFinal;
     }
 
-    // According to https://www.jwchong.com/hl/duckjump.html, there is a
-    // 2 unit margin for determining if the player is on the ground, and snapping is
-    // not performed
-    public bool IsOnFloor(bool snap = false)
+    // https://www.jwchong.com/hl/basicphy.html
+    public bool IsOnFloor()
     {
         // TODO: Max floor angle
 
-        Vector3 downMotion = new Vector3(0.0f, -2.0f / scaleFactor, 0.0f);
-        if (TestMove(GlobalTransform, downMotion) != null)
+        // This is Goldsrc's method for getting us "unstuck" from the ground when we jump
+        // TODO: IMPROVEMENT: Ignore this hardcoded value and just use hsm to handle this
+        if (velocity.Y > 180.0f / scaleFactor)
         {
-            if (snap)
+            return false;
+        }
+
+        Vector3 downMotion = new Vector3(0.0f, -2.0f / scaleFactor, 0.0f);
+        KinematicCollision3D collision;
+        if ((collision = TestMove(GlobalTransform, downMotion)) != null)
+        {
+            // This is Goldsrc's method for determining whether a slope is walkable or not
+            // TODO: IMPROVEMENT: We can base this on an actual angle and make it
+            // configurable
+            if (collision.GetNormal().Y >= 0.7f)
             {
+                // Snap to the ground
                 MoveAndCollide(downMotion);
+                return true;
             }
-            return true;
+            else
+            {
+                return false;
+            }
         }
         else
         {

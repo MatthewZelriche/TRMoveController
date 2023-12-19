@@ -35,12 +35,6 @@ public partial class TRMoveController : RigidBody3D
 
         public override Transition GetTransition()
         {
-            if (Input.IsActionJustPressed("TRJump"))
-            {
-                // Bail early so we aren't stuck to the ground
-                return Transition.None();
-            }
-
             return Owner.IsOnFloor() ? Transition.Sibling<Ground>() : Transition.None();
         }
     }
