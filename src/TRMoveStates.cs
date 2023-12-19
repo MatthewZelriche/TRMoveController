@@ -18,6 +18,14 @@ public partial class TRMoveController : RigidBody3D
             Owner.ApplyHalfGravity(step);
         }
 
+        public override void OnEnter()
+        {
+            if (Input.IsActionJustPressed("TRJump"))
+            {
+                Owner.velocity.Y = Owner.JumpForce;
+            }
+        }
+
         public override void OnExit()
         {
             // Don't forget to zero out our vertical velocity once we are no longer
@@ -27,6 +35,12 @@ public partial class TRMoveController : RigidBody3D
 
         public override Transition GetTransition()
         {
+            if (Input.IsActionJustPressed("TRJump"))
+            {
+                // Bail early so we aren't stuck to the ground
+                return Transition.None();
+            }
+
             return Owner.IsOnFloor() ? Transition.Sibling<Ground>() : Transition.None();
         }
     }
@@ -41,7 +55,11 @@ public partial class TRMoveController : RigidBody3D
 
         public override Transition GetTransition()
         {
-            // TODO
+            if (Input.IsActionJustPressed("TRJump") || !Owner.IsOnFloor())
+            {
+                return Transition.Sibling<Air>();
+            }
+
             return Transition.None();
         }
     }

@@ -69,6 +69,8 @@ public partial class TRMoveController : RigidBody3D
     // Corresponds to the cvar 'sv_gravity' in goldsrc
     private float gravity = 800.0f;
 
+    private float jumpForce = 268.3f;
+
     public float StandingHeight
     {
         get { return standingHeight / scaleFactor; }
@@ -115,6 +117,12 @@ public partial class TRMoveController : RigidBody3D
     {
         get { return gravity / scaleFactor; }
         set { gravity = value * scaleFactor; }
+    }
+
+    public float JumpForce
+    {
+        get { return jumpForce / scaleFactor; }
+        set { jumpForce = value * scaleFactor; }
     }
 
     private StateMachine movementStates = new StateMachine();
