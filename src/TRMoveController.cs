@@ -69,6 +69,11 @@ public partial class TRMoveController : RigidBody3D
     // Corresponds to the cvar 'sv_airaccelerate' in goldsrc
     private float airAccelerate = 10.0f;
 
+    [ExportCategory("Climbing")]
+    [Export]
+    // Corresponds to the cvar 'sv_stepsize' in goldsrc
+    private float maxStepHeight = 18.0f;
+
     [ExportCategory("Gravity & Falling")]
     [Export(PropertyHint.Range, "0,1200,20,or_greater")]
     // Corresponds to the cvar 'sv_gravity' in goldsrc
@@ -130,10 +135,17 @@ public partial class TRMoveController : RigidBody3D
         set { jumpForce = value * scaleFactor; }
     }
 
+    public float MaxStepHeight
+    {
+        get { return maxStepHeight / scaleFactor; }
+        set { maxStepHeight = value * scaleFactor; }
+    }
+
     private StateMachine movementStates = new StateMachine();
     private Vector3 velocity;
     private float entityFriction = 1.0f;
     float maxFloorAngleValue = 0.7f;
+    private ShapeCast3D stepCollider = new ShapeCast3D();
 
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
@@ -149,6 +161,9 @@ public partial class TRMoveController : RigidBody3D
 
         // Set dimensions
         ((BoxShape3D)collider.Shape).Size = new Vector3(Width, StandingHeight, Width);
+        stepCollider.Shape = new BoxShape3D();
+        ((BoxShape3D)stepCollider.Shape).Size = new Vector3(Width, StandingHeight, Width);
+        AddChild(stepCollider);
         playerCamera.Position = new Vector3(
             playerCamera.Position.X,
             EyeHeight / 2,
@@ -330,6 +345,18 @@ public partial class TRMoveController : RigidBody3D
             // Get the amount of movement still left to perform
             deltaRemaining = collision.GetRemainder();
 
+            // Before we process collision, can we step up to avoid it?
+            Vector3 stepUpPos;
+            if (
+                movementStates.IsInState<Ground>()
+                && (stepUpPos = TryStepUp(ref deltaRemaining)) != Vector3.Zero
+            )
+            {
+                // Teleport directly to the step up location
+                GlobalPosition = stepUpPos;
+                continue;
+            }
+
             // Process Collision
             float bounceCoefficient = ComputeBounceCoefficient(collision.GetNormal().Y);
             GD.Print(bounceCoefficient);
@@ -369,6 +396,52 @@ public partial class TRMoveController : RigidBody3D
         else
         {
             return 1.0f;
+        }
+    }
+
+    // TODO: Research how correct this solution is compared to goldsrc
+    // jwchong doesn't have a lot to say about it...
+    // TODO: Minor bug causes player to get bumped up briefly when approaching an invalid
+    // spot at high speeds. Likely just needs a small margin of error
+    private Vector3 TryStepUp(ref Vector3 deltaRemaining)
+    {
+        Vector3 up = new Vector3(0, MaxStepHeight, 0);
+
+        // Trace up to see how much headroom we have
+        stepCollider.Position = Vector3.Zero;
+        stepCollider.TargetPosition = up;
+        stepCollider.ForceShapecastUpdate();
+        stepCollider.Position = up * stepCollider.GetClosestCollisionSafeFraction();
+
+        // Trace forward with our remaining velocity to see how far forward we can potentially move
+        // above the obstacle
+        stepCollider.TargetPosition = deltaRemaining;
+        stepCollider.ForceShapecastUpdate();
+        stepCollider.Position += deltaRemaining * stepCollider.GetClosestCollisionSafeFraction();
+        // Save how far we've moved, in case this step up succeeds
+        Vector3 potentialNewRemaining =
+            deltaRemaining * (1 - stepCollider.GetClosestCollisionSafeFraction());
+
+        // If we've made it this far, we should trace downwards to find where the top
+        // of the obstacle is
+        stepCollider.TargetPosition = -up;
+        stepCollider.ForceShapecastUpdate();
+        Vector3 stepPosition =
+            stepCollider.Position + (-up * stepCollider.GetClosestCollisionSafeFraction());
+        stepCollider.Position = Vector3.Zero;
+
+        // Check if we've moved up a meaningful amount
+        // TODO: Is 0.1 trenchbroom units a good margin of error?
+        if (Mathf.Abs(ToGlobal(stepPosition).Y - GlobalPosition.Y) > (0.1f / scaleFactor))
+        {
+            // We successfully stepped up. We need to subtract the velocity we are about
+            // to perform with a teleport
+            deltaRemaining = potentialNewRemaining;
+            return ToGlobal(stepPosition);
+        }
+        else
+        {
+            return Vector3.Zero;
         }
     }
 }
