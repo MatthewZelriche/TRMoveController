@@ -401,10 +401,10 @@ public partial class TRMoveController : RigidBody3D
 
     // TODO: Research how correct this solution is compared to goldsrc
     // jwchong doesn't have a lot to say about it...
-    // TODO: Minor bug causes player to get bumped up briefly when approaching an invalid
-    // spot at high speeds. Likely just needs a small margin of error
+    // TODO: Minor bug causes player to not step up at very slow speeds
     private Vector3 TryStepUp(ref Vector3 deltaRemaining)
     {
+        float minMoveAmt = 0.125f / scaleFactor;
         Vector3 up = new Vector3(0, MaxStepHeight, 0);
 
         // Trace up to see how much headroom we have
@@ -417,7 +417,14 @@ public partial class TRMoveController : RigidBody3D
         // above the obstacle
         stepCollider.TargetPosition = deltaRemaining;
         stepCollider.ForceShapecastUpdate();
-        stepCollider.Position += deltaRemaining * stepCollider.GetClosestCollisionSafeFraction();
+        Vector3 amtMoved = deltaRemaining * stepCollider.GetClosestCollisionSafeFraction();
+        stepCollider.Position += amtMoved;
+        // Failed to move any appreciable difference, there is no step up...
+        if (amtMoved.Length() <= minMoveAmt)
+        {
+            return Vector3.Zero;
+        }
+
         // Save how far we've moved, in case this step up succeeds
         Vector3 potentialNewRemaining =
             deltaRemaining * (1 - stepCollider.GetClosestCollisionSafeFraction());
@@ -432,7 +439,7 @@ public partial class TRMoveController : RigidBody3D
 
         // Check if we've moved up a meaningful amount
         // TODO: Is 0.1 trenchbroom units a good margin of error?
-        if (Mathf.Abs(ToGlobal(stepPosition).Y - GlobalPosition.Y) > (0.1f / scaleFactor))
+        if (Mathf.Abs(ToGlobal(stepPosition).Y - GlobalPosition.Y) > minMoveAmt)
         {
             // We successfully stepped up. We need to subtract the velocity we are about
             // to perform with a teleport
