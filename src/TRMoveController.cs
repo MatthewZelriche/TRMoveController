@@ -2,6 +2,12 @@ using System.Diagnostics;
 using Godot;
 using Hsm;
 
+// Possible improvements:
+// 1. Eliminate Ducktapping bug
+// 2. Smooth uncrouch
+// 3. Snap on step down
+// 4. Toggle crouch button
+
 [GlobalClass]
 public partial class TRMoveController : RigidBody3D
 {
@@ -19,14 +25,20 @@ public partial class TRMoveController : RigidBody3D
     // you use in Qodot.
     private float scaleFactor = 16.0f;
 
-    [Export(PropertyHint.Range, "16,96,1")]
+    [Export]
     private float standingHeight = 72.0f;
 
-    [Export(PropertyHint.Range, "16,48,1")]
+    [Export]
+    private float crouchHeight = 36.0f;
+
+    [Export]
     private float width = 32.0f;
 
     [Export]
     private float eyeHeight = 64.0f;
+
+    [Export]
+    private float crouchedEyeHeight = 28.0f;
 
     [ExportCategory("Collision")]
     [Export]
@@ -87,6 +99,12 @@ public partial class TRMoveController : RigidBody3D
         set { standingHeight = value * scaleFactor; }
     }
 
+    public float CrouchHeight
+    {
+        get { return crouchHeight / scaleFactor; }
+        set { crouchHeight = value * scaleFactor; }
+    }
+
     public float Width
     {
         get { return width / scaleFactor; }
@@ -97,6 +115,12 @@ public partial class TRMoveController : RigidBody3D
     {
         get { return eyeHeight / scaleFactor; }
         set { eyeHeight = value * scaleFactor; }
+    }
+
+    public float CrouchedEyeHeight
+    {
+        get { return crouchedEyeHeight / scaleFactor; }
+        set { crouchedEyeHeight = value * scaleFactor; }
     }
 
     public int ForwardSpeed
@@ -160,22 +184,36 @@ public partial class TRMoveController : RigidBody3D
         );
 
         // Set dimensions
-        ((BoxShape3D)collider.Shape).Size = new Vector3(Width, StandingHeight, Width);
         stepCollider.Shape = new BoxShape3D();
-        ((BoxShape3D)stepCollider.Shape).Size = new Vector3(Width, StandingHeight, Width);
         AddChild(stepCollider);
+        SetPlayerHeight(StandingHeight);
         playerCamera.Position = new Vector3(
             playerCamera.Position.X,
-            EyeHeight / 2,
+            GetFeetLocalPos() + EyeHeight,
             playerCamera.Position.Y
         );
 
         movementStates.Init<Air>(this);
     }
 
+    public float GetFeetLocalPos()
+    {
+        float height = movementStates.IsInState<Crouched>() ? CrouchHeight : StandingHeight;
+
+        return -(height / 2);
+    }
+
+    public void SetPlayerHeight(float height)
+    {
+        ((BoxShape3D)collider.Shape).Size = new Vector3(Width, height, Width);
+        ((BoxShape3D)stepCollider.Shape).Size = new Vector3(Width, height, Width);
+    }
+
     public override void _PhysicsProcess(double _step)
     {
         float step = (float)_step;
+        // Processing states second ensures FSU values are modified on the next frame,
+        // as intended
         movementStates.UpdateStates(step);
         movementStates.ProcessStateTransitions();
     }
@@ -270,12 +308,19 @@ public partial class TRMoveController : RigidBody3D
         FSUFinal.Y = (FSU.Y * MaxSpeed) / FSULength;
         FSUFinal.Z = (FSU.Z * MaxSpeed) / FSULength;
 
+        if (movementStates.IsInState<Crouched>())
+        {
+            FSUFinal *= 0.333f;
+        }
+
         return FSUFinal;
     }
 
     // https://www.jwchong.com/hl/basicphy.html
-    public bool IsOnFloor()
+    public bool IsOnFloorAndSnap(float distanceToCheck)
     {
+        Debug.Assert(distanceToCheck < 0.0f, "Cannot pass positive value to IsOnFloorAndSnap");
+
         // TODO: Max floor angle
 
         // This is Goldsrc's method for getting us "unstuck" from the ground when we jump
@@ -285,7 +330,7 @@ public partial class TRMoveController : RigidBody3D
             return false;
         }
 
-        Vector3 downMotion = new Vector3(0.0f, -2.0f / scaleFactor, 0.0f);
+        Vector3 downMotion = new Vector3(0.0f, distanceToCheck / scaleFactor, 0.0f);
         KinematicCollision3D collision;
         if ((collision = TestMove(GlobalTransform, downMotion)) != null)
         {
@@ -359,7 +404,6 @@ public partial class TRMoveController : RigidBody3D
 
             // Process Collision
             float bounceCoefficient = ComputeBounceCoefficient(collision.GetNormal().Y);
-            GD.Print(bounceCoefficient);
             deltaRemaining = ComputeCollisionResponse(
                 deltaRemaining,
                 collision.GetNormal(),
