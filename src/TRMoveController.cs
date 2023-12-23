@@ -385,7 +385,6 @@ public partial class TRMoveController : RigidBody3D
             {
                 break;
             }
-
             // Collision was detected, so we haven't moved the entire distance yet...
             // Get the amount of movement still left to perform
             deltaRemaining = collision.GetRemainder();
@@ -455,7 +454,8 @@ public partial class TRMoveController : RigidBody3D
         stepCollider.Position = Vector3.Zero;
         stepCollider.TargetPosition = up;
         stepCollider.ForceShapecastUpdate();
-        stepCollider.Position = up * stepCollider.GetClosestCollisionSafeFraction();
+        Vector3 upMoved = up * stepCollider.GetClosestCollisionSafeFraction();
+        stepCollider.Position = upMoved;
 
         // Trace forward with our remaining velocity to see how far forward we can potentially move
         // above the obstacle
@@ -475,10 +475,10 @@ public partial class TRMoveController : RigidBody3D
 
         // If we've made it this far, we should trace downwards to find where the top
         // of the obstacle is
-        stepCollider.TargetPosition = -up;
+        stepCollider.TargetPosition = -upMoved;
         stepCollider.ForceShapecastUpdate();
         Vector3 stepPosition =
-            stepCollider.Position + (-up * stepCollider.GetClosestCollisionSafeFraction());
+            stepCollider.Position + (-upMoved * stepCollider.GetClosestCollisionSafeFraction());
         stepCollider.Position = Vector3.Zero;
 
         // Check if we've moved up a meaningful amount
