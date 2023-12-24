@@ -205,6 +205,11 @@ public partial class TRMoveController : RigidBody3D
         ((BoxShape3D)collider.Shape).Size = new Vector3(Width, height, Width);
     }
 
+    public float GetPlayerHeight()
+    {
+        return ((BoxShape3D)collider.Shape).Size.Y;
+    }
+
     public override void _PhysicsProcess(double _step)
     {
         float step = (float)_step;
@@ -243,7 +248,9 @@ public partial class TRMoveController : RigidBody3D
     private Vector3 ComputeGroundFriction(Vector3 horzVel, float step)
     {
         // TODO: Check EdgeFriction
-        float frictionCoefficient = friction * entityFriction * 1.0f;
+        float edgeFriction = ComputeEdgeFriction(horzVel);
+        GD.Print(edgeFriction);
+        float frictionCoefficient = friction * entityFriction * edgeFriction;
         float smallSpeed = Mathf.Max(0.1f / scaleFactor, step * StopSpeed * frictionCoefficient);
 
         if (horzVel.Length() >= StopSpeed)
@@ -258,6 +265,16 @@ public partial class TRMoveController : RigidBody3D
         {
             return Vector3.Zero;
         }
+    }
+
+    private float ComputeEdgeFriction(Vector3 horzVel)
+    {
+        Transform3D transform = Transform;
+        transform.Origin +=
+            (Width / 2) * horzVel.Normalized() - new Vector3(0, GetPlayerHeight() / 2, 0);
+        var result = TestMove(transform, new Vector3(0, -(34 / scaleFactor), 0));
+
+        return result == null ? edgeFriction : 1.0f;
     }
 
     private Vector3 ComputeFSU()
