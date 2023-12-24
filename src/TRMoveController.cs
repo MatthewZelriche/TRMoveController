@@ -169,7 +169,6 @@ public partial class TRMoveController : RigidBody3D
     private Vector3 velocity;
     private float entityFriction = 1.0f;
     float maxFloorAngleValue = 0.7f;
-    private ShapeCast3D stepCollider = new ShapeCast3D();
 
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
@@ -184,8 +183,6 @@ public partial class TRMoveController : RigidBody3D
         );
 
         // Set dimensions
-        stepCollider.Shape = new BoxShape3D();
-        AddChild(stepCollider);
         SetPlayerHeight(StandingHeight);
         playerCamera.Position = new Vector3(
             playerCamera.Position.X,
@@ -206,7 +203,6 @@ public partial class TRMoveController : RigidBody3D
     public void SetPlayerHeight(float height)
     {
         ((BoxShape3D)collider.Shape).Size = new Vector3(Width, height, Width);
-        ((BoxShape3D)stepCollider.Shape).Size = new Vector3(Width, height, Width);
     }
 
     public override void _PhysicsProcess(double _step)
