@@ -357,7 +357,7 @@ public partial class TRMoveController : RigidBody3D
     private KinematicCollision3D TestMove(Transform3D from, Vector3 motion)
     {
         KinematicCollision3D collision = new KinematicCollision3D();
-        bool res = TestMove(from, motion, collision, recoveryAsCollision: true, maxCollisions: 6);
+        bool res = TestMove(from, motion, collision, maxCollisions: 6);
 
         return res ? collision : null;
     }
@@ -450,45 +450,24 @@ public partial class TRMoveController : RigidBody3D
         float minMoveAmt = 0.125f / scaleFactor;
         Vector3 up = new Vector3(0, MaxStepHeight, 0);
 
-        // Trace up to see how much headroom we have
-        stepCollider.Position = Vector3.Zero;
-        stepCollider.TargetPosition = up;
-        stepCollider.ForceShapecastUpdate();
-        Vector3 upMoved = up * stepCollider.GetClosestCollisionSafeFraction();
-        stepCollider.Position = upMoved;
+        Transform3D a = GlobalTransform;
+        KinematicCollision3D result = TestMove(a, up);
+        Vector3 upMove = result != null ? result.GetTravel() : up;
+        a.Origin += upMove;
 
-        // Trace forward with our remaining velocity to see how far forward we can potentially move
-        // above the obstacle
-        stepCollider.TargetPosition = deltaRemaining;
-        stepCollider.ForceShapecastUpdate();
-        Vector3 amtMoved = deltaRemaining * stepCollider.GetClosestCollisionSafeFraction();
-        stepCollider.Position += amtMoved;
-        // Failed to move any appreciable difference, there is no step up...
-        if (amtMoved.Length() <= minMoveAmt)
+        result = TestMove(a, deltaRemaining);
+        Vector3 forwardMove = result != null ? result.GetTravel() : deltaRemaining;
+        a.Origin += forwardMove;
+        Vector3 potentialRemainder = result != null ? result.GetRemainder() : Vector3.Zero;
+
+        result = TestMove(a, -upMove);
+        Vector3 downMove = result != null ? result.GetTravel() : -upMove;
+        a.Origin += downMove;
+
+        if (Mathf.Abs(GlobalPosition.Y - a.Origin.Y) > minMoveAmt)
         {
-            return Vector3.Zero;
-        }
-
-        // Save how far we've moved, in case this step up succeeds
-        Vector3 potentialNewRemaining =
-            deltaRemaining * (1 - stepCollider.GetClosestCollisionSafeFraction());
-
-        // If we've made it this far, we should trace downwards to find where the top
-        // of the obstacle is
-        stepCollider.TargetPosition = -upMoved;
-        stepCollider.ForceShapecastUpdate();
-        Vector3 stepPosition =
-            stepCollider.Position + (-upMoved * stepCollider.GetClosestCollisionSafeFraction());
-        stepCollider.Position = Vector3.Zero;
-
-        // Check if we've moved up a meaningful amount
-        // TODO: Is 0.1 trenchbroom units a good margin of error?
-        if (Mathf.Abs(ToGlobal(stepPosition).Y - GlobalPosition.Y) > minMoveAmt)
-        {
-            // We successfully stepped up. We need to subtract the velocity we are about
-            // to perform with a teleport
-            deltaRemaining = potentialNewRemaining;
-            return ToGlobal(stepPosition);
+            deltaRemaining = potentialRemainder;
+            return a.Origin;
         }
         else
         {
