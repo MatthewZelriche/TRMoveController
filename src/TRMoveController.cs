@@ -187,7 +187,7 @@ public partial class TRMoveController : RigidBody3D
         playerCamera.Position = new Vector3(
             playerCamera.Position.X,
             GetFeetLocalPos() + EyeHeight,
-            playerCamera.Position.Y
+            playerCamera.Position.Z
         );
 
         movementStates.Init<Air>(this);
