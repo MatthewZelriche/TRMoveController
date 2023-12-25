@@ -43,7 +43,7 @@ public partial class TRMoveController : RigidBody3D
 
         public override Transition GetTransition()
         {
-            if (Input.IsActionJustPressed("Duck"))
+            if (Input.IsActionJustPressed("Duck") && !IsInInnerState<Crouched>())
             {
                 // Skip transition, head straight into crouched state
                 return Transition.Inner<Crouched>();
@@ -84,7 +84,7 @@ public partial class TRMoveController : RigidBody3D
             {
                 return Transition.Sibling<Air>();
             }
-            if (Input.IsActionJustPressed("Duck"))
+            if (Input.IsActionJustPressed("Duck") && !IsInInnerState<Crouched>())
             {
                 return Transition.Inner<CrouchTransition>();
             }
