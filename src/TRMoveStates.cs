@@ -7,6 +7,8 @@ public partial class TRMoveController : RigidBody3D
 {
     class Air : StateWithOwner<TRMoveController>
     {
+        bool enteredDuringDuck = false;
+
         public override void Update(float step)
         {
             // Leapfrog integration of gravity force.
@@ -26,6 +28,10 @@ public partial class TRMoveController : RigidBody3D
             {
                 Owner.velocity.Y = Owner.JumpForce;
             }
+            // We went from ground to air while in duck state, we have to make sure to
+            // preserve the duck state as a child
+            // TODO: Toggle support
+            enteredDuringDuck = Input.IsActionPressed("Duck");
         }
 
         public override void OnExit()
@@ -37,16 +43,39 @@ public partial class TRMoveController : RigidBody3D
 
         public override Transition GetTransition()
         {
-            return Owner.IsOnFloorAndSnap(-2.0f) ? Transition.Sibling<Ground>() : Transition.None();
+            if (Input.IsActionJustPressed("Duck"))
+            {
+                // Skip transition, head straight into crouched state
+                return Transition.Inner<Crouched>();
+            }
+
+            Transition defaultTransition = Transition.None();
+            if (enteredDuringDuck)
+            {
+                enteredDuringDuck = false;
+                defaultTransition = Transition.Inner<Crouched>();
+            }
+
+            return Owner.IsOnFloorAndSnap(-2.0f) ? Transition.Sibling<Ground>() : defaultTransition;
         }
     }
 
     class Ground : StateWithOwner<TRMoveController>
     {
+        bool enteredDuringDuck = false;
+
         public override void Update(float step)
         {
             Owner.velocity = Owner.ComputeHorzVelocity(step);
             Owner.MoveAndSlide(step);
+        }
+
+        public override void OnEnter()
+        {
+            // We went from air to ground while in duck state, we have to make sure to
+            // preserve the duck state as a child
+            // TODO: Toggle support
+            enteredDuringDuck = Input.IsActionPressed("Duck");
         }
 
         public override Transition GetTransition()
@@ -59,6 +88,11 @@ public partial class TRMoveController : RigidBody3D
             {
                 return Transition.Inner<CrouchTransition>();
             }
+            if (enteredDuringDuck)
+            {
+                enteredDuringDuck = false;
+                return Transition.Inner<Crouched>();
+            }
 
             return Transition.None();
         }
@@ -66,7 +100,28 @@ public partial class TRMoveController : RigidBody3D
 
     class Swim : StateWithOwner<TRMoveController> { }
 
-    class CrouchTransition : StateWithOwner<TRMoveController>
+    // TODO: This is currently mostly just a placeholder to get uncrouching working
+    class Walking : StateWithOwner<TRMoveController>
+    {
+        public override Transition GetTransition()
+        {
+            return Transition.None();
+        }
+    }
+
+    class CrouchBase : StateWithOwner<TRMoveController>
+    {
+        public bool CanUnduck()
+        {
+            var result = Owner.TestMove(
+                Owner.Transform,
+                new Vector3(0, Owner.StandingHeight - Owner.CrouchHeight, 0)
+            );
+            return result == null;
+        }
+    }
+
+    class CrouchTransition : CrouchBase
     {
         private float startTime = 0.4f;
         private float startLocalY;
@@ -98,25 +153,49 @@ public partial class TRMoveController : RigidBody3D
             Owner.playerCamera.Position = newPos;
         }
 
+        public override void OnExit()
+        {
+            if (!Input.IsActionPressed("Duck"))
+            {
+                // Aborting duck transition early
+                Owner.MoveAndCollide(new Vector3(0, Owner.CrouchHeight / 2, 0));
+                Owner.SetPlayerHeight(Owner.StandingHeight);
+            }
+
+            // Adjust eyeheight back to standing
+            Owner.playerCamera.Position = new Vector3(
+                Owner.playerCamera.Position.X,
+                Owner.GetFeetLocalPos() + Owner.EyeHeight,
+                Owner.playerCamera.Position.Z
+            );
+        }
+
         public override Transition GetTransition()
         {
+            if (!Input.IsActionPressed("Duck"))
+            {
+                // Cancelled duck early
+                return Transition.Sibling<Walking>();
+            }
+
             return finishedCrouch ? Transition.Sibling<Crouched>() : Transition.None();
         }
     }
 
-    class Crouched : StateWithOwner<TRMoveController>
+    class Crouched : CrouchBase
     {
         public override void OnEnter()
         {
-            float oldFeetY = Owner.GetFeetLocalPos() * Owner.scaleFactor;
             Owner.SetPlayerHeight(Owner.CrouchHeight);
-            GD.Print(oldFeetY - ((Owner.standingHeight - Owner.crouchHeight) / 2));
-            Debug.Assert(
+            // Do not attempt to snap to the ground if we crouch in the air
+            if (Owner.movementStates.IsInState<Ground>())
+            {
+                float oldFeetY = Owner.GetFeetLocalPos() * Owner.scaleFactor;
+                GD.Print(oldFeetY - ((Owner.standingHeight - Owner.crouchHeight) / 2));
                 Owner.IsOnFloorAndSnap(
                     oldFeetY - ((Owner.standingHeight - Owner.crouchHeight) / 2)
-                ),
-                "Should be impossible?"
-            );
+                );
+            }
 
             // After adjusting the AABB, we must update the eye height because
             // our feet local position will have changed.
@@ -126,9 +205,27 @@ public partial class TRMoveController : RigidBody3D
             Owner.playerCamera.Position = newPos;
         }
 
+        public override void OnExit()
+        {
+            if (!Input.IsActionPressed("Duck"))
+            {
+                // Exiting because player left duck, as opposed to an exit
+                // due to transition from the main ground/air states
+                Owner.MoveAndCollide(new Vector3(0, Owner.CrouchHeight / 2, 0));
+                Owner.SetPlayerHeight(Owner.StandingHeight);
+                Owner.playerCamera.Position = new Vector3(
+                    Owner.playerCamera.Position.X,
+                    Owner.GetFeetLocalPos() + Owner.EyeHeight,
+                    Owner.playerCamera.Position.Z
+                );
+            }
+        }
+
         public override Transition GetTransition()
         {
-            return Transition.None();
+            return !Input.IsActionPressed("Duck") && CanUnduck()
+                ? Transition.Sibling<Walking>()
+                : Transition.None();
         }
     }
 }

@@ -195,7 +195,7 @@ public partial class TRMoveController : RigidBody3D
 
     public float GetFeetLocalPos()
     {
-        float height = movementStates.IsInState<Crouched>() ? CrouchHeight : StandingHeight;
+        float height = GetPlayerHeight();
 
         return -(height / 2);
     }
@@ -247,9 +247,7 @@ public partial class TRMoveController : RigidBody3D
 
     private Vector3 ComputeGroundFriction(Vector3 horzVel, float step)
     {
-        // TODO: Check EdgeFriction
         float edgeFriction = ComputeEdgeFriction(horzVel);
-        GD.Print(edgeFriction);
         float frictionCoefficient = friction * entityFriction * edgeFriction;
         float smallSpeed = Mathf.Max(0.1f / scaleFactor, step * StopSpeed * frictionCoefficient);
 
@@ -333,8 +331,6 @@ public partial class TRMoveController : RigidBody3D
     public bool IsOnFloorAndSnap(float distanceToCheck)
     {
         Debug.Assert(distanceToCheck < 0.0f, "Cannot pass positive value to IsOnFloorAndSnap");
-
-        // TODO: Max floor angle
 
         // This is Goldsrc's method for getting us "unstuck" from the ground when we jump
         // TODO: IMPROVEMENT: Ignore this hardcoded value and just use hsm to handle this
