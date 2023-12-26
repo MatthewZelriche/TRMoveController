@@ -38,7 +38,7 @@ public partial class Zone : Area3D
 	public override void _EnterTree()
 	{
 		collider = GetNode<CollisionShape3D>("collider");
-		colliderShape = (BoxShape3D)collider.Shape;
+		collider.Shape = colliderShape;
 		visualizer = GetNode<CsgBox3D>("visualizer");
 		AdjustZoneShape();
 	}
