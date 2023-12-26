@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://uqaddbvrdgqn"]
+
+[ext_resource type="Script" path="res://addons/TRMoveController/src/world/WaterZone.cs" id="1_qn1y8"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_r4ljl"]
+size = Vector3(16, 8, 2)
+
+[node name="WaterZone" type="Area3D"]
+script = ExtResource("1_qn1y8")
+
+[node name="collider" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_r4ljl")
+
+[node name="visualizer" type="CSGBox3D" parent="."]
+transparency = 0.5
+size = Vector3(2, 2, 2)

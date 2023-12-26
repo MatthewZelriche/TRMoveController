@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using Godot;
 using Hsm;
@@ -169,6 +170,8 @@ public partial class TRMoveController : RigidBody3D
     private Vector3 velocity;
     private float entityFriction = 1.0f;
     float maxFloorAngleValue = 0.7f;
+
+    private Dictionary<ZoneType, List<Zone>> touchingZones = new();
 
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
@@ -482,5 +485,30 @@ public partial class TRMoveController : RigidBody3D
         {
             return Vector3.Zero;
         }
+    }
+
+    public void AddTouchingZone(Zone zone)
+    {
+        if (!touchingZones.ContainsKey(zone.Type))
+        {
+            touchingZones.Add(zone.Type, new List<Zone>());
+        }
+
+        touchingZones[zone.Type].Add(zone);
+    }
+
+    public void RemoveTouchingZone(Zone zone)
+    {
+        touchingZones[zone.Type].Remove(zone);
+    }
+
+    public List<Zone> GetTouchingZonesOfType(ZoneType type)
+    {
+        if (!touchingZones.ContainsKey(type))
+        {
+            return null;
+        }
+
+        return touchingZones[type];
     }
 }
