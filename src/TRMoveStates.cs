@@ -112,6 +112,11 @@ public partial class TRMoveController : RigidBody3D
     {
         public override void Update(float step)
         {
+            // Pressing jump in the water overrides vertical velocity completely
+            if (Input.IsActionPressed("TRJump"))
+            {
+                Owner.velocity.Y = 100.0f / Owner.scaleFactor;
+            }
             Owner.velocity = Owner.ComputeWaterVelocity(step);
             Owner.MoveAndSlide(step);
         }
