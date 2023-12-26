@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Godot;
@@ -8,6 +9,16 @@ using Hsm;
 // 2. Smooth uncrouch
 // 3. Snap on step down
 // 4. Toggle crouch button
+
+
+// Note: This is ordered a particular way for performance
+enum WaterLevel
+{
+    Eyes,
+    Center,
+    Feet,
+    None
+}
 
 [GlobalClass]
 public partial class TRMoveController : RigidBody3D
@@ -220,6 +231,48 @@ public partial class TRMoveController : RigidBody3D
         // as intended
         movementStates.UpdateStates(step);
         movementStates.ProcessStateTransitions();
+    }
+
+    private WaterLevel ComputeWaterLevel()
+    {
+        PhysicsPointQueryParameters3D param = new PhysicsPointQueryParameters3D();
+        param.CollideWithAreas = true;
+        param.CollideWithBodies = false;
+        var space = GetWorld3D().DirectSpaceState;
+
+        foreach (WaterLevel level in Enum.GetValues(typeof(WaterLevel)))
+        {
+            if (level == WaterLevel.None)
+            {
+                continue;
+            }
+
+            switch (level)
+            {
+                case WaterLevel.Feet:
+                    param.Position = ToGlobal(
+                        new Vector3(0, GetFeetLocalPos() + (1.0f / scaleFactor), 0)
+                    );
+                    break;
+                case WaterLevel.Center:
+                    param.Position = GlobalPosition;
+                    break;
+                case WaterLevel.Eyes:
+                    param.Position = playerCamera.GlobalPosition;
+                    break;
+            }
+
+            var results = space.IntersectPoint(param);
+            foreach (var entry in results)
+            {
+                if (entry["collider"].AsGodotObject() is WaterZone)
+                {
+                    return level;
+                }
+            }
+        }
+
+        return WaterLevel.None;
     }
 
     private Vector3 ComputeHorzVelocity(float step)
