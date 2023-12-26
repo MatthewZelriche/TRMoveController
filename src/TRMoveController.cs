@@ -151,6 +151,12 @@ public partial class TRMoveController : RigidBody3D
         set { sideSpeed = value * (int)scaleFactor; }
     }
 
+    public int UpSpeed
+    {
+        get { return upSpeed / (int)scaleFactor; }
+        set { upSpeed = value * (int)scaleFactor; }
+    }
+
     public float MaxSpeed
     {
         get { return maxSpeed / scaleFactor; }
@@ -393,11 +399,11 @@ public partial class TRMoveController : RigidBody3D
         }
         if (Input.IsActionPressed("TRUp"))
         {
-            FSU.Y += upSpeed;
+            FSU.Y += UpSpeed;
         }
         if (Input.IsActionPressed("TRDown"))
         {
-            FSU.Y -= upSpeed;
+            FSU.Y -= UpSpeed;
         }
 
         // Truncation to integer via Export Hints
