@@ -124,8 +124,8 @@ public partial class TRMoveController : RigidBody3D
             )
             {
                 return !Owner.IsOnFloorAndSnap(-2.0f)
-                    ? Transition.Sibling<Ground>()
-                    : Transition.Sibling<Air>();
+                    ? Transition.Sibling<Air>()
+                    : Transition.Sibling<Ground>();
             }
 
             return Transition.None();
