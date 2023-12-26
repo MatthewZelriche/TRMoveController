@@ -69,6 +69,10 @@ public partial class TRMoveController : RigidBody3D
     // Corresponds to the cvar 'cl_sideSpeed' in goldsrc
     private int sideSpeed = 400;
 
+    [Export(PropertyHint.Range, "0,600,5,or_greater")]
+    // Corresponds to the cvar 'cl_upspeed' in goldsrc
+    private int upSpeed = 320;
+
     [Export(PropertyHint.Range, "0,450,5,or_greater")]
     // Corresponds to the cvar 'sv_maxspeed' in goldsrc
     private float maxSpeed = 320.0f;
@@ -301,6 +305,43 @@ public partial class TRMoveController : RigidBody3D
         return velAfterGroundFriction + (muCoefficient * accelVector.Normalized());
     }
 
+    private Vector3 ComputeWaterVelocity(float step)
+    {
+        Vector3 FSU = ComputeFSU();
+        Vector3 accelVector;
+        if (FSU == Vector3.Zero)
+        {
+            accelVector = new Vector3(0, -(60 / scaleFactor), 0);
+        }
+        else
+        {
+            accelVector = (
+                (
+                    FSU.X * playerCamera.UnitRightVector()
+                    + new Vector3(0, FSU.Y, 0)
+                    + (FSU.Z * playerCamera.UnitForwardVector())
+                )
+            );
+        }
+        float clampedSpeed = 0.8f * Mathf.Min(MaxSpeed, accelVector.Length());
+        float gamma1 = entityFriction * step * clampedSpeed * accelerate;
+        float frictionCoefficient = friction * entityFriction * edgeFriction;
+        float gamma2 =
+            clampedSpeed - (1 - (entityFriction * frictionCoefficient * step)) * velocity.Length();
+        float muCoefficient;
+        if (gamma2 > 0 && clampedSpeed >= 0.1f / scaleFactor)
+        {
+            muCoefficient = Mathf.Min(gamma1, gamma2);
+        }
+        else
+        {
+            muCoefficient = 0;
+        }
+
+        return (1 - (entityFriction * frictionCoefficient * step)) * velocity
+            + (muCoefficient * accelVector.Normalized());
+    }
+
     private Vector3 ComputeGroundFriction(Vector3 horzVel, float step)
     {
         float edgeFriction = ComputeEdgeFriction(horzVel);
@@ -350,8 +391,14 @@ public partial class TRMoveController : RigidBody3D
         {
             FSU.X += SideSpeed;
         }
-
-        // TODO: Upmove
+        if (Input.IsActionPressed("TRUp"))
+        {
+            FSU.Y += upSpeed;
+        }
+        if (Input.IsActionPressed("TRDown"))
+        {
+            FSU.Y -= upSpeed;
+        }
 
         // Truncation to integer via Export Hints
         // Must also clamp to -2047, 2047

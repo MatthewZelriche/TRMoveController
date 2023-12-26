@@ -32,15 +32,16 @@ public partial class TRMoveController : RigidBody3D
             enteredDuringDuck = Input.IsActionPressed("Duck");
         }
 
-        public override void OnExit()
-        {
-            // Don't forget to zero out our vertical velocity once we are no longer
-            // in the air
-            Owner.velocity.Y = 0;
-        }
-
         public override Transition GetTransition()
         {
+            if (
+                Owner.GetTouchingZonesOfType(ZoneType.WaterZone) != null
+                && Owner.ComputeWaterLevel() <= WaterLevel.Center
+            )
+            {
+                return Transition.Sibling<Swim>();
+            }
+
             if (Input.IsActionJustPressed("Duck") && !IsInInnerState<Crouched>())
             {
                 // Skip transition, head straight into crouched state
@@ -74,10 +75,21 @@ public partial class TRMoveController : RigidBody3D
             // preserve the duck state as a child
             // TODO: Toggle support
             enteredDuringDuck = Input.IsActionPressed("Duck");
+
+            // Ensure vertical velocity is zeroed when we enter the ground state
+            Owner.velocity.Y = 0;
         }
 
         public override Transition GetTransition()
         {
+            if (
+                Owner.GetTouchingZonesOfType(ZoneType.WaterZone) != null
+                && Owner.ComputeWaterLevel() <= WaterLevel.Center
+            )
+            {
+                return Transition.Sibling<Swim>();
+            }
+
             if (Input.IsActionJustPressed("TRJump") || !Owner.IsOnFloorAndSnap(-2.0f))
             {
                 return Transition.Sibling<Air>();
@@ -96,7 +108,29 @@ public partial class TRMoveController : RigidBody3D
         }
     }
 
-    class Swim : StateWithOwner<TRMoveController> { }
+    class Swim : StateWithOwner<TRMoveController>
+    {
+        public override void Update(float step)
+        {
+            Owner.velocity = Owner.ComputeWaterVelocity(step);
+            Owner.MoveAndSlide(step);
+        }
+
+        public override Transition GetTransition()
+        {
+            if (
+                Owner.GetTouchingZonesOfType(ZoneType.WaterZone) == null
+                || Owner.ComputeWaterLevel() > WaterLevel.Center
+            )
+            {
+                return !Owner.IsOnFloorAndSnap(-2.0f)
+                    ? Transition.Sibling<Ground>()
+                    : Transition.Sibling<Air>();
+            }
+
+            return Transition.None();
+        }
+    }
 
     // TODO: This is currently mostly just a placeholder to get uncrouching working
     class Walking : StateWithOwner<TRMoveController>
