@@ -139,10 +139,10 @@ public partial class TRMoveController : RigidBody3D
         set { crouchedEyeHeight = value * scaleFactor; }
     }
 
-    public int ForwardSpeed
+    public float ForwardSpeed
     {
-        get { return forwardSpeed / (int)scaleFactor; }
-        set { forwardSpeed = value * (int)scaleFactor; }
+        get { return forwardSpeed / scaleFactor; }
+        set { forwardSpeed = (int)(value * scaleFactor); }
     }
 
     public int SideSpeed
@@ -463,18 +463,15 @@ public partial class TRMoveController : RigidBody3D
         // This clamps the final allowable input speed to maxSpeed and performs some
         // normalization of the input vector to avoid faster movement while moving
         // diagonally
-        float FSULength = FSU.Length();
-        Vector3 FSUFinal = new Vector3();
-        FSUFinal.X = (FSU.X * MaxSpeed) / FSULength;
-        FSUFinal.Y = (FSU.Y * MaxSpeed) / FSULength;
-        FSUFinal.Z = (FSU.Z * MaxSpeed) / FSULength;
+        float FSULength = Mathf.Min(FSU.Length(), MaxSpeed);
+        FSU = FSU.Normalized() * FSULength;
 
         if (movementStates.IsInState<Crouched>())
         {
-            FSUFinal *= 0.333f;
+            FSU *= 0.333f;
         }
 
-        return FSUFinal;
+        return FSU;
     }
 
     // https://www.jwchong.com/hl/basicphy.html
