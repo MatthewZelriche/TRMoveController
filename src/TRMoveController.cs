@@ -348,6 +348,47 @@ public partial class TRMoveController : RigidBody3D
             + (muCoefficient * accelVector.Normalized());
     }
 
+    private bool CheckWaterJump()
+    {
+        if (ComputeWaterLevel() != WaterLevel.Center)
+        {
+            return false;
+        }
+
+        Vector3 FSU = ComputeFSU();
+        Vector3 moveDir =
+            (
+                FSU.X * playerCamera.UnitRightVector()
+                + FSU.Z * playerCamera.UnitForwardHorzVector()
+            ).Normalized() * (24.0f / scaleFactor);
+
+        Vector3 from = GlobalPosition + new Vector3(0, 8 / scaleFactor, 0);
+        Transform3D startTransform = GlobalTransform;
+        startTransform.Origin = from;
+        Vector3 to = moveDir;
+        KinematicCollision3D result;
+        if ((result = TestMove(startTransform, to)) != null && result.GetNormal().Y < 0.1f)
+        {
+            PhysicsRayQueryParameters3D param = new PhysicsRayQueryParameters3D();
+            var exclude = new Godot.Collections.Array<Rid>();
+            exclude.Add(GetRid());
+            param.Exclude = exclude;
+            var space = GetWorld3D().DirectSpaceState;
+            Vector3 globalPos = GlobalPosition;
+            globalPos.Y += GetPlayerHeight() / 2;
+            param.From = globalPos;
+            param.To = param.From + moveDir;
+            DebugDraw3D.DrawLine(param.From, param.To);
+            var res = space.IntersectRay(param);
+            if (res.Count == 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private Vector3 ComputeGroundFriction(Vector3 horzVel, float step)
     {
         float edgeFriction = ComputeEdgeFriction(horzVel);

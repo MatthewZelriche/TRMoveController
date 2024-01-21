@@ -117,6 +117,12 @@ public partial class TRMoveController : RigidBody3D
             {
                 Owner.velocity.Y = 100.0f / Owner.scaleFactor;
             }
+            if (Owner.CheckWaterJump())
+            {
+                // TODO: This is not accurate to jwchong, but I cannot get this working
+                // with the correct value of 225.0f
+                Owner.velocity.Y = 350.0f / Owner.scaleFactor;
+            }
             Owner.velocity = Owner.ComputeWaterVelocity(step);
             Owner.MoveAndSlide(step);
         }
