@@ -382,7 +382,6 @@ public partial class TRMoveController : RigidBody3D
             globalPos.Y += GetPlayerHeight() / 2;
             param.From = globalPos;
             param.To = param.From + moveDir;
-            DebugDraw3D.DrawLine(param.From, param.To);
             var res = space.IntersectRay(param);
             if (res.Count == 0)
             {
