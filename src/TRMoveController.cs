@@ -275,9 +275,13 @@ public partial class TRMoveController : RigidBody3D
             var results = space.IntersectPoint(param);
             foreach (var entry in results)
             {
-                if (entry["collider"].AsGodotObject() is WaterZone)
+                if (entry["collider"].AsGodotObject() is Zone)
                 {
-                    return level;
+                    Zone zone = (Zone)entry["collider"].AsGodotObject();
+                    if (zone.Type == ZoneType.WaterZone)
+                    {
+                        return level;
+                    }
                 }
             }
         }
