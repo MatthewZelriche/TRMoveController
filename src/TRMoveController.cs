@@ -243,6 +243,14 @@ public partial class TRMoveController : RigidBody3D
         movementStates.ProcessStateTransitions();
     }
 
+    public override void _IntegrateForces(PhysicsDirectBodyState3D state)
+    {
+        // HACK: Rigidbody sometimes causes some "residual" velocity after contact
+        // Easiest way to fix is to just zero out the velocity at every frame since we
+        // track it seperately
+        state.LinearVelocity = Vector3.Zero;
+    }
+
     private WaterLevel ComputeWaterLevel()
     {
         PhysicsPointQueryParameters3D param = new PhysicsPointQueryParameters3D();
@@ -544,6 +552,15 @@ public partial class TRMoveController : RigidBody3D
             {
                 break;
             }
+
+            // Apply an impulse onto a rigidbody instead of sliding
+            if (collision.GetCollider().IsClass("RigidBody3D"))
+            {
+                RigidBody3D aa = (RigidBody3D)collision.GetCollider();
+                aa.ApplyCentralImpulse(Mass * deltaRemaining);
+                break;
+            }
+
             // Collision was detected, so we haven't moved the entire distance yet...
             // Get the amount of movement still left to perform
             deltaRemaining = collision.GetRemainder();
