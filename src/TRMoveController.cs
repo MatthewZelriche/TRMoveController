@@ -21,7 +21,7 @@ enum WaterLevel
 }
 
 [GlobalClass]
-public partial class TRMoveController : RigidBody3D
+public partial class TRMoveController : RigidBody3D, Damagable
 {
     [Export]
     private TRCamera playerCamera = null;
@@ -554,7 +554,7 @@ public partial class TRMoveController : RigidBody3D
             }
 
             // Apply an impulse onto a rigidbody instead of sliding
-            if (collision.GetCollider().IsClass("RigidBody3D"))
+            if (collision.GetCollider() is PhysProp)
             {
                 RigidBody3D aa = (RigidBody3D)collision.GetCollider();
                 aa.ApplyCentralImpulse(Mass * deltaRemaining);
@@ -674,5 +674,11 @@ public partial class TRMoveController : RigidBody3D
         }
 
         return touchingZones[type];
+    }
+
+    public void Kill()
+    {
+        // TODO: Proper
+        QueueFree();
     }
 }
