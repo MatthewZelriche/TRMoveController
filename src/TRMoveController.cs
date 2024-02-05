@@ -20,7 +20,6 @@ enum WaterLevel
     None
 }
 
-[GlobalClass]
 public partial class TRMoveController : RigidBody3D, Damagable
 {
     [Export]
@@ -187,6 +186,9 @@ public partial class TRMoveController : RigidBody3D, Damagable
         set { maxStepHeight = value * scaleFactor; }
     }
 
+    float unconvertedForce = 0;
+    Vector3 oldVelocity = Vector3.Zero;
+
     private StateMachine movementStates = new StateMachine();
     private Vector3 velocity;
     private float entityFriction = 1.0f;
@@ -236,6 +238,7 @@ public partial class TRMoveController : RigidBody3D, Damagable
 
     public override void _PhysicsProcess(double _step)
     {
+        base._PhysicsProcess(_step);
         float step = (float)_step;
         // Processing states second ensures FSU values are modified on the next frame,
         // as intended
@@ -245,10 +248,46 @@ public partial class TRMoveController : RigidBody3D, Damagable
 
     public override void _IntegrateForces(PhysicsDirectBodyState3D state)
     {
+        base._IntegrateForces(state);
         // HACK: Rigidbody sometimes causes some "residual" velocity after contact
         // Easiest way to fix is to just zero out the velocity at every frame since we
         // track it seperately
         state.LinearVelocity = Vector3.Zero;
+        ComputeForces(state);
+
+        oldVelocity = state.LinearVelocity;
+    }
+
+    // TODO: This implementation is funky, because of the MoveAndCollide
+    // logic that makes character controllers so different from RigidBodies
+    // Right now, this technically detects crushing, but contacts don't provide
+    // information and so the unconverted forces reported are massive.
+    // This may end up needing to be a boolean crush/no crush function
+    // and more complex damage is performed elsewhere
+    private void ComputeForces(PhysicsDirectBodyState3D state)
+    {
+        Vector3 incomingForceThisFrame = Vector3.Zero;
+        Vector3 accel = state.LinearVelocity - oldVelocity;
+        Vector3 outgoingForce = accel * Mass;
+
+        // Sum up incoming forces
+        for (int i = 0; i < state.GetContactCount(); i++)
+        {
+            var contactBody = state.GetContactColliderObject(i);
+            if (contactBody is AnimatableBody3D animBody)
+            {
+                incomingForceThisFrame += state.GetContactImpulse(i);
+            }
+            if (contactBody is RigidBody3D rigidBody)
+            {
+                incomingForceThisFrame += state.GetContactImpulse(i);
+            }
+        }
+
+        // Record how much incoming force was not converted into outgoing force
+        unconvertedForce = (
+            (incomingForceThisFrame / state.Step) - (outgoingForce / state.Step)
+        ).Length();
     }
 
     private WaterLevel ComputeWaterLevel()
@@ -680,5 +719,11 @@ public partial class TRMoveController : RigidBody3D, Damagable
     {
         // TODO: Proper
         QueueFree();
+    }
+
+    public bool ShouldDamage(float delta, Vector3 moveDir)
+    {
+        // TODO: Better implementation
+        return unconvertedForce > 100.0f;
     }
 }
