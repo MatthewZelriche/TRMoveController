@@ -2,35 +2,36 @@ using Godot;
 
 public partial class MovingPlatform : AnimatableBody3D
 {
-    // Called when the node enters the scene tree for the first time.
-    public override void _Ready() { }
-
-    // Called every frame. 'delta' is the elapsed time since the previous frame.
-    public override void _Process(double delta) { }
+    protected Vector3 velocity;
 
     public override void _PhysicsProcess(double delta)
     {
         base._PhysicsProcess(delta);
 
-        var collision = MoveAndCollide(new Vector3(0, 2, 0) * (float)delta, true);
-        if (collision != null)
+        var res = MoveAndCollide(velocity * (float)delta, true, maxCollisions: 8);
+        if (res != null)
         {
-            // Blocked...
-            var body = (PhysicsBody3D)collision.GetCollider();
-            if (body is Damagable)
+            for (int i = 0; i < res.GetCollisionCount(); i++)
             {
-                var nextCollision = body.MoveAndCollide(new Vector3(0, 2, 0) * (float)delta, true);
-                if (nextCollision != null)
+                var body = res.GetCollider(i);
+                if (body is Damagable damagable)
                 {
-                    ((Damagable)body).Kill();
+                    if (damagable.ShouldDamage((float)delta, velocity))
+                    {
+                        damagable.Kill();
+                    }
                 }
-            }
-            else
-            {
-                return;
+
+                // Stop when hitting static body
+                // TODO: Consider not checking for this and just require maps to
+                // specify an endpoint, ignoring collisions with staticbodies
+                if (body is StaticBody3D)
+                {
+                    velocity = Vector3.Zero;
+                }
             }
         }
 
-        GlobalPosition += new Vector3(0, 2, 0) * (float)delta;
+        GlobalPosition += velocity * (float)delta;
     }
 }

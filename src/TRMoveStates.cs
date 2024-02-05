@@ -234,7 +234,6 @@ public partial class TRMoveController : RigidBody3D
             if (Owner.movementStates.IsInState<Ground>())
             {
                 float oldFeetY = Owner.GetFeetLocalPos() * Owner.scaleFactor;
-                GD.Print(oldFeetY - ((Owner.standingHeight - Owner.crouchHeight) / 2));
                 Owner.IsOnFloorAndSnap(
                     oldFeetY - ((Owner.standingHeight - Owner.crouchHeight) / 2)
                 );
